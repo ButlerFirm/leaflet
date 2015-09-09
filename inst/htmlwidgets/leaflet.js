@@ -892,6 +892,27 @@ var dataframe = (function() {
       layerPicked.addData(data);
     };
 
+
+   function highlightFeature(e) {
+    	var layer = e.target;
+			layer.setStyle({
+				weight: 3,
+        color: "black"
+			});
+			if (!L.Browser.ie && !L.Browser.opera) {
+				layer.bringToFront();
+			};
+		};
+    function resetHighlight(e) {
+      var layer = e.target;
+      var originalColor = e.target.feature.properties.style.color;
+      var originalWeight = e.target.feature.properties.style.weight;
+			layer.setStyle({
+				weight: originalWeight,
+        color: originalColor
+			});
+		};
+
   methods.addGeoJSON = function(data, layerId, group, style) {
     var self = this;
     if (typeof(data) === "string") {
@@ -916,8 +937,8 @@ var dataframe = (function() {
         var popup = feature.properties.popup;
         if (typeof popup !== 'undefined' && popup !== null) layer.bindPopup(popup);
         layer.on("click", mouseHandler(self.id, layerId, group, "geojson_click", extraInfo), this);
-        layer.on("mouseover", mouseHandler(self.id, layerId, group, "geojson_mouseover", extraInfo), this);
-        layer.on("mouseout", mouseHandler(self.id, layerId, group, "geojson_mouseout", extraInfo), this);
+        layer.on("mouseover", highlightFeature , this);
+        layer.on("mouseout", resetHighlight, this);
       }
     });
     this.layerManager.addLayer(gjlayer, "geojson", layerId, group);
