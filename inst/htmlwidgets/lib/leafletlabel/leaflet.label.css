@@ -49,5 +49,4 @@
 
 .leaflet-label-right:before,
 .leaflet-label-left:after {
-	content: "";
 }
