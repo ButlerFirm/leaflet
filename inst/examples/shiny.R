@@ -17,7 +17,7 @@ server <- function(input, output, session) {
     leaflet() %>%
       addGeoJSON(geodata) %>%
       addCircles(-60, 60, radius = 5e5, layerId = "circle") %>%
-      fitBounds(-87.1875, 71.4131, 128.3203, 0.3515)
+      addTiles()
   })
 
   observeEvent(input$map1_geojson_mouseover, {
@@ -42,8 +42,11 @@ server <- function(input, output, session) {
     v$msg <- paste("Clicked map at", input$map1_click$lat, "/", input$map1_click$lng)
     if (input$addMarker) {
       leafletProxy("map1") %>%
-        addMarkers(lng = input$map1_click$lng, lat = input$map1_click$lat)
+        addLabelMarkers(lng = input$map1_click$lng, lat = input$map1_click$lat,options = markerOptions(draggable = TRUE), label="hahahahaha",labelclass="test121321")
     }
+  })
+  observeEvent(input$map1_labelmarker_drag, {
+    v$msg <- paste("drag!!!", input$map1_marker_drag$lng)
   })
   observeEvent(input$map1_zoom, {
     v$msg <- paste("Zoom changed to", input$map1_zoom)

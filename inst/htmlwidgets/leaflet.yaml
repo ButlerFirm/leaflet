@@ -12,3 +12,8 @@ dependencies:
     version: 1.0.0
     src: "htmlwidgets/lib/leafletfix"
     stylesheet: leafletfix.css
+  - name: leafletlabel
+    version: 0.2.2
+    src: "htmlwidgets/lib/leafletlabel"
+    script: leaflet.label.js
+    stylesheet: leaflet.label.css

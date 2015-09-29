@@ -472,6 +472,57 @@ addMarkers = function(
     clusterOptions, clusterId
   ) %>% expandLimits(pts$lat, pts$lng)
 }
+leafletLabelDependencies <- function() {
+    list(
+        htmltools::htmlDependency(
+            "Leaflet.label",
+            "0.2.2",
+            system.file("htmlwidgets/lib/Leafletlabel/", package = "leafletlabel"),
+            script = "leaflet.label.js",
+            stylesheet="leaflet.label.css"
+          )   )
+  }
+addLabelMarkers = function(
+  map, lng = NULL, lat = NULL, layerId = NULL, group = NULL,
+  icon = NULL,
+  popup = NULL,
+  options = markerOptions(),
+  clusterOptions = NULL,
+  clusterId = NULL,
+  label= NULL,
+  labelclass=NULL,
+  data = getMapData(map)
+) {
+  if (!is.null(icon)) {
+    # If custom icons are specified, we need to 1) deduplicate any URLs/files,
+    # so we can efficiently send e.g. 1000 markers that all use the same 2
+    # icons; and 2) do base64 encoding on any local icon files (as opposed to
+    # URLs [absolute or relative] which will be left alone).
+
+    # If formulas are present, they must be evaluated first so we can pack the
+    # resulting values
+    icon = evalFormula(list(icon), data)[[1]]
+
+    if (inherits(icon, "leaflet_icon_set")) {
+      icon = iconSetToIcons(icon)
+    }
+
+    # Pack and encode each URL vector; this will be reversed on the client
+    icon$iconUrl         = b64EncodePackedIcons(packStrings(icon$iconUrl))
+    icon$iconRetinaUrl   = b64EncodePackedIcons(packStrings(icon$iconRetinaUrl))
+    icon$shadowUrl       = b64EncodePackedIcons(packStrings(icon$shadowUrl))
+    icon$shadowRetinaUrl = b64EncodePackedIcons(packStrings(icon$shadowRetinaUrl))
+    icon = filterNULL(icon)
+  }
+
+  if (!is.null(clusterOptions))
+    map$dependencies = c(map$dependencies, markerClusterDependencies())
+  pts = derivePoints(data, lng, lat, missing(lng), missing(lat), "addLabelMarkers")
+  invokeMethod(
+    map, data, 'addLabelMarkers', pts$lat, pts$lng, icon, layerId, group, options, popup,
+    clusterOptions, clusterId,label,labelclass
+  ) %>% expandLimits(pts$lat, pts$lng)
+}
 
 markerClusterDependencies = function() {
   list(

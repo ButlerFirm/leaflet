@@ -651,6 +651,8 @@ var dataframe = (function() {
           marker.on('click', mouseHandler(this.id, thisId, thisGroup, 'marker_click', extraInfo), this);
           marker.on('mouseover', mouseHandler(this.id, thisId, thisGroup, 'marker_mouseover', extraInfo), this);
           marker.on('mouseout', mouseHandler(this.id, thisId, thisGroup, 'marker_mouseout', extraInfo), this);
+          marker.on('drag', mouseHandler(this.id, thisId, thisGroup, 'marker_drag', extraInfo), this);
+          marker.on('dragend', mouseHandler(this.id, thisId, thisGroup, 'marker_dragend', extraInfo), this);
         }).call(this);
       }
 
@@ -714,6 +716,126 @@ var dataframe = (function() {
     if (icon) icondf.effectiveLength = df.nrow();
 
     addMarkers(this, df, group, clusterOptions, clusterId, function(df, i) {
+      var options = df.get(i);
+      if (icon) options.icon = getIcon(i);
+      return L.marker([df.get(i, 'lat'), df.get(i, 'lng')], options);
+    });
+  };
+
+  addLayers = function(map, category, df, layerFunc) {
+    for (var i = 0; i < df.nrow(); i++) {
+      (function() {
+        var layer = layerFunc(df, i);
+        var thisId = df.get(i, 'layerId');
+        var thisGroup = df.get(i, 'group');
+        this.layerManager.addLayer(layer, category, thisId, thisGroup);
+        if (layer.bindPopup) {
+          var popup = df.get(i, 'popup');
+          if (popup !== null) layer.bindPopup(popup);
+        }
+        layer.on('click', mouseHandler(this.id, thisId, thisGroup, category + '_click'), this);
+        layer.on('mouseover', mouseHandler(this.id, thisId, thisGroup, category + '_mouseover'), this);
+        layer.on('mouseout', mouseHandler(this.id, thisId, thisGroup, category + '_mouseout'), this);
+      }).call(map);
+    }
+  }
+
+    function addLabelMarkers(map, df, group, clusterOptions, clusterId, markerFunc) {
+    (function() {
+      var clusterGroup = this.layerManager.getLayer("cluster", clusterId),
+          cluster = clusterOptions !== null;
+      if (cluster && !clusterGroup) {
+        clusterGroup = L.markerClusterGroup(clusterOptions);
+        clusterGroup.clusterLayerStore = new ClusterLayerStore(clusterGroup);
+      }
+      var extraInfo = cluster ? { clusterId: clusterId } : {};
+
+      for (var i = 0; i < df.nrow(); i++) {
+        (function() {
+          var marker = markerFunc(df, i);
+          var thisId = df.get(i, 'layerId');
+          var thisGroup = cluster ? null : df.get(i, 'group');
+          if (cluster) {
+            clusterGroup.clusterLayerStore.add(marker, thisId);
+          } else {
+            this.layerManager.addLayer(marker, "marker", thisId, thisGroup);
+          }
+          var popup = df.get(i, 'popup');
+          if (popup !== null) marker.bindPopup(popup);
+          var label = df.get(i, 'label');
+          var labelclass = df.get(i, 'labelclass');
+          if (label !== null && labelclass !== null) marker.bindLabel(label, { noHide: true,className:labelclass }).showLabel();
+          if (label !== null && labelclass == null) marker.bindLabel(label, { noHide: true }).showLabel();
+          marker.on('click', mouseHandler(this.id, thisId, thisGroup, 'labelmarker_click', extraInfo), this);
+          marker.on('mouseover', mouseHandler(this.id, thisId, thisGroup, 'labelmarker_mouseover', extraInfo), this);
+          marker.on('mouseout', mouseHandler(this.id, thisId, thisGroup, 'labelmarker_mouseout', extraInfo), this);
+          marker.on('drag', mouseHandler(this.id, thisId, thisGroup, 'labelmarker_drag', extraInfo), this);
+          marker.on('dragend', mouseHandler(this.id, thisId, thisGroup, 'labelmarker_dragend', extraInfo), this);
+        }).call(this);
+      }
+
+      if (cluster) {
+        this.layerManager.addLayer(clusterGroup, "cluster", clusterId, group);
+      }
+    }).call(map);
+  }
+
+  methods.addLabelMarkers = function(lat, lng, icon, layerId, group, options, popup,
+                                clusterOptions, clusterId,label,labelclass) {
+    if (icon) {
+      // Unpack icons
+      icon.iconUrl         = unpackStrings(icon.iconUrl);
+      icon.iconRetinaUrl   = unpackStrings(icon.iconRetinaUrl);
+      icon.shadowUrl       = unpackStrings(icon.shadowUrl);
+      icon.shadowRetinaUrl = unpackStrings(icon.shadowRetinaUrl);
+
+      // This cbinds the icon URLs and any other icon options; they're all
+      // present on the icon object.
+      var icondf = dataframe.create().cbind(icon);
+
+      // Constructs an icon from a specified row of the icon dataframe.
+      var getIcon = function(i) {
+        var opts = icondf.get(i);
+        if (!opts.iconUrl) {
+          return new L.Icon.Default();
+        }
+
+        // Composite options (like points or sizes) are passed from R with each
+        // individual component as its own option. We need to combine them now
+        // into their composite form.
+        if (opts.iconWidth) {
+          opts.iconSize = [opts.iconWidth, opts.iconHeight];
+        }
+        if (opts.shadowWidth) {
+          opts.shadowSize = [opts.shadowWidth, opts.shadowHeight];
+        }
+        if (opts.iconAnchorX) {
+          opts.iconAnchor = [opts.iconAnchorX, opts.iconAnchorY];
+        }
+        if (opts.shadowAnchorX) {
+          opts.shadowAnchor = [opts.shadowAnchorX, opts.shadowAnchorY];
+        }
+        if (opts.popupAnchorX) {
+          opts.popupAnchor = [opts.popupAnchorX, opts.popupAnchorY];
+        }
+
+        return new L.Icon(opts);
+      };
+    }
+
+    var df = dataframe.create()
+      .col('lat', lat)
+      .col('lng', lng)
+      .col('layerId', layerId)
+      .col('group', group)
+      .col('popup', popup)
+      .col('label', label)
+      .col('labelclass', labelclass)
+      .cbind(options);
+
+    if (icon) icondf.effectiveLength = df.nrow();
+
+    addLabelMarkers(this, df, group, clusterOptions, clusterId, function(df, i) {
       var options = df.get(i);
       if (icon) options.icon = getIcon(i);
       return L.marker([df.get(i, 'lat'), df.get(i, 'lng')], options);
