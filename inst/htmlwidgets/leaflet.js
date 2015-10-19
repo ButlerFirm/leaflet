@@ -1021,9 +1021,7 @@ var dataframe = (function() {
 				weight: 3,
         color: "black"
 			});
-			if (!L.Browser.ie && !L.Browser.opera) {
-				layer.bringToFront();
-			};
+
 		};
     function resetHighlight(e) {
       var layer = e.target;
