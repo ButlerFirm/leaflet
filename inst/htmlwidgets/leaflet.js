@@ -529,6 +529,10 @@ var dataframe = (function() {
       south: bounds.getSouthWest().lat,
       west: bounds.getSouthWest().lng
     });
+    Shiny.onInputChange(id + '_center', {
+      lng: map.getCenter().lng,
+      lat: map.getCenter().lat
+    });
     Shiny.onInputChange(id + '_zoom', map.getZoom());
   }
 
@@ -648,6 +652,19 @@ var dataframe = (function() {
           }
           var popup = df.get(i, 'popup');
           if (popup !== null) marker.bindPopup(popup);
+          var label = df.get(i, 'label');
+          var labelOptions = df.get(i, 'labelOptions');
+          if (label !== null) {
+            if (labelOptions !== null) {
+              if(labelOptions.noHide) {
+                marker.bindLabel(label, labelOptions).showLabel();
+              } else {
+                marker.bindLabel(label, labelOptions);
+              }
+            } else {
+              marker.bindLabel(label);
+            }
+          }
           marker.on('click', mouseHandler(this.id, thisId, thisGroup, 'marker_click', extraInfo), this);
           marker.on('mouseover', mouseHandler(this.id, thisId, thisGroup, 'marker_mouseover', extraInfo), this);
           marker.on('mouseout', mouseHandler(this.id, thisId, thisGroup, 'marker_mouseout', extraInfo), this);
@@ -663,7 +680,7 @@ var dataframe = (function() {
   }
 
   methods.addMarkers = function(lat, lng, icon, layerId, group, options, popup,
-                                clusterOptions, clusterId) {
+                                clusterOptions, clusterId, label, labelOptions) {
     if (icon) {
       // Unpack icons
       icon.iconUrl         = unpackStrings(icon.iconUrl);
@@ -711,6 +728,46 @@ var dataframe = (function() {
       .col('layerId', layerId)
       .col('group', group)
       .col('popup', popup)
+      .col('label', label)
+      .col('labelOptions', labelOptions)
+      .cbind(options);
+
+    if (icon) icondf.effectiveLength = df.nrow();
+
+    addMarkers(this, df, group, clusterOptions, clusterId, function(df, i) {
+      var options = df.get(i);
+      if (icon) options.icon = getIcon(i);
+      return L.marker([df.get(i, 'lat'), df.get(i, 'lng')], options);
+    });
+  };
+
+  methods.addAwesomeMarkers = function(lat, lng, icon, layerId, group, options, popup,
+  clusterOptions, clusterId, label, labelOptions) {
+    if (icon) {
+
+      // This cbinds the icon URLs and any other icon options; they're all
+      // present on the icon object.
+      var icondf = dataframe.create().cbind(icon);
+
+      // Constructs an icon from a specified row of the icon dataframe.
+      var getIcon = function(i) {
+        var opts = icondf.get(i);
+        if (!opts) {
+          return new L.AwesomeMarkers.icon();
+        }
+
+        return new L.AwesomeMarkers.icon(opts);
+      };
+    }
+
+    var df = dataframe.create()
+      .col('lat', lat)
+      .col('lng', lng)
+      .col('layerId', layerId)
+      .col('group', group)
+      .col('popup', popup)
+      .col('label', label)
+      .col('labelOptions', labelOptions)
       .cbind(options);
 
     if (icon) icondf.effectiveLength = df.nrow();
@@ -732,6 +789,17 @@ var dataframe = (function() {
         if (layer.bindPopup) {
           var popup = df.get(i, 'popup');
           if (popup !== null) layer.bindPopup(popup);
+        }
+        if (layer.bindLabel) {
+          var label = df.get(i, 'label');
+          var labelOptions = df.get(i, 'labelOptions');
+          if (label !== null) {
+            if (labelOptions !== null) {
+                layer.bindLabel(label, labelOptions);
+            } else {
+              layer.bindLabel(label);
+            }
+          }
         }
         layer.on('click', mouseHandler(this.id, thisId, thisGroup, category + '_click'), this);
         layer.on('mouseover', mouseHandler(this.id, thisId, thisGroup, category + '_mouseover'), this);
@@ -860,7 +928,7 @@ var dataframe = (function() {
     }
   }
 
-  methods.addCircles = function(lat, lng, radius, layerId, group, options, popup) {
+  methods.addCircles = function(lat, lng, radius, layerId, group, options, popup, label, labelOptions) {
     var df = dataframe.create()
       .col('lat', lat)
       .col('lng', lng)
@@ -868,6 +936,8 @@ var dataframe = (function() {
       .col('layerId', layerId)
       .col('group', group)
       .col('popup', popup)
+      .col('label', label)
+      .col('labelOptions', labelOptions)
       .cbind(options);
 
     addLayers(this, "shape", df, function(df, i) {
@@ -875,7 +945,7 @@ var dataframe = (function() {
     });
   };
 
-  methods.addCircleMarkers = function(lat, lng, radius, layerId, group, options, clusterOptions, clusterId, popup) {
+  methods.addCircleMarkers = function(lat, lng, radius, layerId, group, options, clusterOptions, clusterId, popup, label, labelOptions) {
     var df = dataframe.create()
       .col('lat', lat)
       .col('lng', lng)
@@ -883,6 +953,8 @@ var dataframe = (function() {
       .col('layerId', layerId)
       .col('group', group)
       .col('popup', popup)
+      .col('label', label)
+      .col('labelOptions', labelOptions)
       .cbind(options);
 
     addMarkers(this, df, group, clusterOptions, clusterId, function(df, i) {
@@ -894,12 +966,14 @@ var dataframe = (function() {
    * @param lat Array of arrays of latitude coordinates for polylines
    * @param lng Array of arrays of longitude coordinates for polylines
    */
-  methods.addPolylines = function(polygons, layerId, group, options, popup) {
+  methods.addPolylines = function(polygons, layerId, group, options, popup, label, labelOptions) {
     var df = dataframe.create()
       .col('shapes', polygons)
       .col('layerId', layerId)
       .col('group', group)
       .col('popup', popup)
+      .col('label', label)
+      .col('labelOptions', labelOptions)
       .cbind(options);
 
     addLayers(this, "shape", df, function(df, i) {
@@ -939,7 +1013,7 @@ var dataframe = (function() {
     this.layerManager.clearLayers("shape");
   };
 
-  methods.addRectangles = function(lat1, lng1, lat2, lng2, layerId, group, options, popup) {
+  methods.addRectangles = function(lat1, lng1, lat2, lng2, layerId, group, options, popup, label, labelOptions) {
     var df = dataframe.create()
       .col('lat1', lat1)
       .col('lng1', lng1)
@@ -948,6 +1022,8 @@ var dataframe = (function() {
       .col('layerId', layerId)
       .col('group', group)
       .col('popup', popup)
+      .col('label', label)
+      .col('labelOptions', labelOptions)
       .cbind(options);
 
     addLayers(this, "shape", df, function(df, i) {
@@ -963,12 +1039,14 @@ var dataframe = (function() {
    * @param lat Array of arrays of latitude coordinates for polygons
    * @param lng Array of arrays of longitude coordinates for polygons
    */
-  methods.addPolygons = function(polygons, layerId, group, options, popup) {
+  methods.addPolygons = function(polygons, layerId, group, options, popup, label, labelOptions) {
     var df = dataframe.create()
       .col('shapes', polygons)
       .col('layerId', layerId)
       .col('group', group)
       .col('popup', popup)
+      .col('label', label)
+      .col('labelOptions', labelOptions)
       .cbind(options);
 
     addLayers(this, "shape", df, function(df, i) {
@@ -1316,6 +1394,24 @@ var dataframe = (function() {
     }
   };
 
+  methods.addScaleBar = function(options) {
+
+    var self = this;
+
+    // Only allow one scale bar at a time
+    methods.removeScaleBar.call(this);
+
+    var scaleBar = L.control.scale(options).addTo(this);
+    this.currentScaleBar = scaleBar;
+  };
+
+  methods.removeScaleBar = function() {
+    if (this.currentScaleBar) {
+      this.currentScaleBar.removeFrom(this);
+      this.currentScaleBar = null;
+    }
+  };
+
   methods.hideGroup = function(group) {
     var self = this;
     $.each(asArray(group), function(i, g) {
@@ -1606,6 +1702,21 @@ var dataframe = (function() {
     this.layerManager.clearLayers("image");
   };
 
+  methods.addMeasure = function(options){
+    // if a measureControl already exists, then remove it and
+    //   replace with a new one
+    if(this.measureControl) {
+      this.measureControl.removeFrom( this );
+    }
+    this.measureControl = L.control.measure(options);
+    this.measureControl.addTo(this);
+  };
+
+  methods.removeMeasure = function( ){
+    this.measureControl.removeFrom( this );
+    delete this.measureControl;
+  }
+
   function preventUnintendedZoomOnScroll(map) {
     // Prevent unwanted scroll capturing. Similar in purpose to
     // https://github.com/CliffCloud/Leaflet.Sleep but with a
@@ -1667,10 +1778,10 @@ var dataframe = (function() {
 
       if (!HTMLWidgets.shinyMode) return map;
 
-      // The map is rendered staticly (no output binding, so no this.getId())
-      if (typeof this.getId === 'undefined') return map;
+      // Check if the map is rendered statically (no output binding)
+      if (!/\bshiny-bound-output\b/.test(el.className)) return map;
 
-      map.id = this.getId(el);
+      map.id = el.id;
 
       // Store the map on the element so we can find it later by ID
       $(el).data("leaflet-map", map);
@@ -1710,6 +1821,9 @@ var dataframe = (function() {
       return map;
     },
     renderValue: function(el, data, map) {
+      return this.doRenderValue(el, data, map);
+    },
+    doRenderValue: function(el, data, map) {
       // Leaflet does not behave well when you set up a bunch of layers when
       // the map is not visible (width/height == 0). Popups get misaligned
       // relative to their owning markers, and the fitBounds calculations
@@ -1793,7 +1907,7 @@ var dataframe = (function() {
     resize: function(el, width, height, map) {
       map.invalidateSize();
       if (map.leafletr.pendingRenderData) {
-        this.renderValue(el, map.leafletr.pendingRenderData, map);
+        this.doRenderValue(el, map.leafletr.pendingRenderData, map);
       }
     }
   });
