@@ -1680,6 +1680,8 @@ var dataframe = (function() {
         Shiny.onInputChange(map.id + '_click', {
           lat: e.latlng.lat,
           lng: e.latlng.lng,
+          x:this.latLngToContainerPoint(e.latlng).x,
+          y:this.latLngToContainerPoint(e.latlng).y,
           '.nonce': Math.random() // Force reactivity if lat/lng hasn't changed
         });
       });
