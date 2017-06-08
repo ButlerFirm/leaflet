@@ -481,7 +481,7 @@ leafletLabelDependencies <- function() {
             script = "leaflet.label.js",
             stylesheet="leaflet.label.css"
           )   )
-  }
+}
 addLabelMarkers = function(
   map, lng = NULL, lat = NULL, layerId = NULL, group = NULL,
   icon = NULL,
@@ -1028,6 +1028,12 @@ addFeatureGeoJSON = function(map, geojson = NULL, layerId = NULL) {
     stop("Missing layerId string")
   }
   invokeMethod(map, getMapData(map), 'addFeatureGeoJSON', geojson, layerId)
+}
+
+#' @rdname map-layers
+#' @export
+addBing = function(map, key = NULL, bingtype = NULL) {
+  invokeMethod(map, getMapData(map), 'addBing', key, bingtype)
 }
 
 #' @rdname remove

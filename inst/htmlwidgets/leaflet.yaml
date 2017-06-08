@@ -17,3 +17,7 @@ dependencies:
     src: "htmlwidgets/lib/leafletlabel"
     script: leaflet.label.js
     stylesheet: leaflet.label.css
+  - name: leafletbing
+    version: 0.1
+    src: "htmlwidgets/lib/leafletbing"
+    script: leafletbing.js
