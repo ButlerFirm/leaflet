@@ -1,4 +1,4 @@
-\name{leaflettest-imports}
+\name{leaflet-imports}
 \alias{JS}
 \alias{\%>\%}
 \docType{import}
