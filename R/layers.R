@@ -1034,8 +1034,8 @@ addFeatureGeoJSON = function(map, geojson = NULL, layerId = NULL) {
 
 #' @rdname map-layers
 #' @export
-addBing = function(map, key = NULL, bingtype = NULL) {
-  invokeMethod(map, getMapData(map), 'addBing', key, bingtype)
+addBing = function(map, key = NULL, layerId = NULL, group = NULL, bingtype = NULL) {
+  invokeMethod(map, getMapData(map), 'addBing', key, layerId, group, bingtype)
 }
 
 #' @rdname remove

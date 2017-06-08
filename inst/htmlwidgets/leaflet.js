@@ -595,9 +595,9 @@ var dataframe = (function() {
   };
 
   /* ADDED BY TBF */
-  methods.addBing = function(key, bingtype) {
+  methods.addBing = function(key, layerId, group, bingtype) {
     bingUrl = new L.BingLayer(key, {type: bingtype});
-    this.layerManager.addLayer(bingUrl, "tile", "bing", "basemap");
+    this.layerManager.addLayer(bingUrl, "tile", layerId, group);
   };
 
   methods.removeTiles = function(layerId) {

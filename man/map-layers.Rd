@@ -76,7 +76,7 @@ removeFeatureGeoJSON(map, layerId = NULL, featureId = NULL)
 
 addFeatureGeoJSON(map, geojson = NULL, layerId = NULL)
 
-addBing(map, key = NULL, bingtype = NULL)
+addBing(map, key = NULL, layerId = NULL, group = NULL, bingtype = NULL)
 
 addTopoJSON(map, topojson, layerId = NULL, group = NULL, stroke = TRUE, color = "#03F", 
     weight = 5, opacity = 0.5, fill = TRUE, fillColor = color, fillOpacity = 0.2, 
