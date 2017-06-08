@@ -482,6 +482,8 @@ leafletLabelDependencies <- function() {
             stylesheet="leaflet.label.css"
           )   )
 }
+#' @rdname map-layers
+#' @export
 addLabelMarkers = function(
   map, lng = NULL, lat = NULL, layerId = NULL, group = NULL,
   icon = NULL,

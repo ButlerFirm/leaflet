@@ -7,6 +7,7 @@
 \alias{addControl}
 \alias{addFeatureGeoJSON}
 \alias{addGeoJSON}
+\alias{addLabelMarkers}
 \alias{addMarkers}
 \alias{addPolygons}
 \alias{addPolylines}
@@ -34,6 +35,10 @@ addPopups(map, lng = NULL, lat = NULL, popup, layerId = NULL, group = NULL,
 addMarkers(map, lng = NULL, lat = NULL, layerId = NULL, group = NULL, icon = NULL, 
     popup = NULL, options = markerOptions(), clusterOptions = NULL, clusterId = NULL, 
     data = getMapData(map))
+
+addLabelMarkers(map, lng = NULL, lat = NULL, layerId = NULL, group = NULL, 
+    icon = NULL, popup = NULL, options = markerOptions(), clusterOptions = NULL, 
+    clusterId = NULL, label = NULL, labelclass = NULL, data = getMapData(map))
 
 addCircleMarkers(map, lng = NULL, lat = NULL, radius = 10, layerId = NULL, 
     group = NULL, stroke = TRUE, color = "#03F", weight = 5, opacity = 0.5, 
