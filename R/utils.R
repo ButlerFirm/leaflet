@@ -18,7 +18,7 @@
 #'   \code{map} object that was passed in, possibly modified.
 #'
 #' @export
-dispatch = function(map,
+dispatch <- function(map,
   funcName,
   leaflet = stop(paste(funcName, "requires a map proxy object")),
   leaflet_proxy = stop(paste(funcName, "does not support map proxy objects"))
@@ -31,8 +31,10 @@ dispatch = function(map,
     stop("Invalid map parameter")
 }
 
-# remove NULL elements from a list
-filterNULL = function(x) {
+#' remove NULL elements from a list
+#' @param x A list whose NULL elements will be filtered
+#' @export
+filterNULL <- function(x) {
   if (length(x) == 0 || !is.list(x)) return(x)
   x[!unlist(lapply(x, is.null))]
 }
@@ -42,18 +44,26 @@ filterNULL = function(x) {
 #' @param method the name of the JavaScript method to invoke
 #' @param ... unnamed arguments to be passed to the JavaScript method
 #' @rdname dispatch
+#' @import crosstalk
 #' @export
-invokeMethod = function(map, data, method, ...) {
-  args = evalFormula(list(...), data)
+invokeMethod <- function(map, data, method, ...) {
+  if (crosstalk::is.SharedData(data)) {
+    map$dependencies <- c(map$dependencies, crosstalk::crosstalkLibs())
+    data <- data$data()
+  } else {
+    NULL
+  }
+
+  args <- evalFormula(list(...), data)
 
   dispatch(map,
     method,
     leaflet = {
-      x = map$x$calls
-      if (is.null(x)) x = list()
-      n = length(x)
-      x[[n + 1]] = list(method = method, args = args)
-      map$x$calls = x
+      x <- map$x$calls
+      if (is.null(x)) x <- list()
+      n <- length(x)
+      x[[n + 1]] <- list(method = method, args = args)
+      map$x$calls <- x
       map
     },
     leaflet_proxy = {
@@ -86,7 +96,8 @@ invokeMethod = function(map, data, method, ...) {
 #' execute on the live Leaflet map instance.
 #'
 #' @param mapId single-element character vector indicating the output ID of the
-#'   map to modify
+#'   map to modify (if invoked from a Shiny module, the namespace will be added
+#'   automatically)
 #' @param session the Shiny session object to which the map belongs; usually the
 #'   default value will suffice
 #' @param data a data object; see Details under the \code{\link{leaflet}} help
@@ -97,20 +108,19 @@ invokeMethod = function(map, data, method, ...) {
 #'   \code{TRUE}
 #'
 #' @examples
-#' \donttest{
 #' library(shiny)
 #'
 #' ui <- fluidPage(
 #'   leafletOutput("map1")
 #' )
 #'
+#' map <- leaflet() %>% addCircleMarkers(
+#'   lng = runif(10),
+#'   lat = runif(10),
+#'   layerId = paste0("marker", 1:10))
+
 #' server <- function(input, output, session) {
-#'   output$map1 <- renderLeaflet({
-#'     leaflet() %>% addCircleMarkers(
-#'       lng = runif(10),
-#'       lat = runif(10),
-#'       layerId = paste0("marker", 1:10))
-#'   })
+#'   output$map1 <- renderLeaflet(map)
 #'
 #'   observeEvent(input$map1_marker_click, {
 #'     leafletProxy("map1", session) %>%
@@ -118,9 +128,8 @@ invokeMethod = function(map, data, method, ...) {
 #'   })
 #' }
 #'
-#' shinyApp(ui, server)
-#'
-#' }
+#' app <- shinyApp(ui, server)
+#' \donttest{if (interactive()) app}
 #'
 #' @export
 leafletProxy <- function(mapId, session = shiny::getDefaultReactiveDomain(),
@@ -128,6 +137,25 @@ leafletProxy <- function(mapId, session = shiny::getDefaultReactiveDomain(),
 
   if (is.null(session)) {
     stop("leafletProxy must be called from the server function of a Shiny app")
+  }
+
+  # If this is a new enough version of Shiny that it supports modules, and
+  # we're in a module (nzchar(session$ns(NULL))), and the mapId doesn't begin
+  # with the current namespace, then add the namespace.
+  #
+  # We could also have unconditionally done `mapId <- session$ns(mapId)`, but
+  # older versions of Leaflet would have broken unless the user did session$ns
+  # themselves, and we hate to break their code unnecessarily.
+  #
+  # This won't be necessary in future versions of Shiny, as session$ns (and
+  # other forms of ns()) will be smart enough to only namespace un-namespaced
+  # IDs.
+  if (
+    !is.null(session$ns) &&
+    nzchar(session$ns(NULL)) &&
+    substring(mapId, 1, nchar(session$ns(""))) != session$ns("")
+  ) {
+    mapId <- session$ns(mapId)
   }
 
   structure(
@@ -160,17 +188,19 @@ leafletProxy <- function(mapId, session = shiny::getDefaultReactiveDomain(),
 #
 # When Shiny >0.12.0 goes to CRAN, we should update our version
 # dependency and remove this entire mechanism.
-sessionFlushQueue = new.env(parent = emptyenv())
+sessionFlushQueue <- new.env(parent = emptyenv())
 
-invokeRemote = function(map, method, args = list()) {
+invokeRemote <- function(map, method, args = list()) {
   if (!inherits(map, "leaflet_proxy"))
     stop("Invalid map parameter; map proxy object was expected")
+
+  deps <- htmltools::resolveDependencies(map$dependencies)
 
   msg <- list(
     id = map$id,
     calls = list(
       list(
-        dependencies = lapply(map$dependencies, shiny::createWebDependency),
+        dependencies = lapply(deps, shiny::createWebDependency),
         method = method,
         args = args
       )
@@ -202,7 +232,7 @@ invokeRemote = function(map, method, args = list()) {
           for (msg in sessionFlushQueue[[sess$token]]) {
             sess$sendCustomMessage("leaflet-calls", msg)
           }
-        }, once = TRUE)
+        }, once = TRUE) # nolint
       }
 
       # Append the current value to the apporpriate sessionFlushQueue entry,
@@ -212,7 +242,7 @@ invokeRemote = function(map, method, args = list()) {
     } else {
       sess$onFlushed(function() {
         sess$sendCustomMessage("leaflet-calls", msg)
-      }, once = TRUE)
+      }, once = TRUE) # nolint
     }
   } else {
     sess$sendCustomMessage("leaflet-calls", msg)
@@ -222,12 +252,60 @@ invokeRemote = function(map, method, args = list()) {
 
 # A helper function to generate the body of function(x, y) list(x = x, y = y),
 # to save some typing efforts in writing tileOptions(), markerOptions(), ...
-makeListFun = function(list) {
-  if (is.function(list)) list = formals(list)
-  nms = names(list)
-  cat(sprintf('list(%s)\n', paste(nms, nms, sep = ' = ', collapse = ', ')))
+makeListFun <- function(list) {
+  if (is.function(list)) list <- formals(list)
+  nms <- names(list)
+  cat(sprintf("list(%s)\n", paste(nms, nms, sep = " = ", collapse = ", ")))
 }
 
-"%||%" = function(a, b) {
+"%||%" <- function(a, b) {
   if (!is.null(a)) a else b
+}
+
+#' Utility function to check if a coordinates is valid
+#' @param lng vector with longitude values
+#' @param lat vector with latitude values
+#' @param funcName Name of calling function
+#' @param warn A boolean. Whether to generate a warning message if there are rows with missing/invalid data
+#' @param mode if \code{"point"} then warn about any \code{NA} lng/lat values;
+#'   if \code{"polygon"} then \code{NA} values are expected to be used as
+#'   polygon delimiters
+#' @export
+validateCoords <- function(lng, lat, funcName, warn = TRUE,
+  mode = c("point", "polygon")) {
+
+  mode <- match.arg(mode)
+
+  if (is.null(lng) && is.null(lat)) {
+    stop(funcName, " requires non-NULL longitude/latitude values")
+  } else if (is.null(lng)) {
+    stop(funcName, " requires non-NULL longitude values")
+  } else if (is.null(lat)) {
+    stop(funcName, " requires non-NULL latitude values")
+  }
+
+  if (!is.numeric(lng) && !is.numeric(lat)) {
+    stop(funcName, " requires numeric longitude/latitude values")
+  } else if (!is.numeric(lng)) {
+    stop(funcName, " requires numeric longitude values")
+  } else if (!is.numeric(lat)) {
+    stop(funcName, " requires numeric latitude values")
+  }
+
+  if (mode == "point") {
+    incomplete <- is.na(lat) | is.na(lng)
+   if (any(incomplete)) {
+      warning(sprintf("Data contains %s rows with either missing or invalid lat/lon values and will be ignored", sum(incomplete))) # nolint
+    }
+  } else if (mode == "polygon") {
+    incomplete <- is.na(lat) != is.na(lng)
+   if (any(incomplete)) {
+      warning(sprintf("Data contains %s rows with either missing or invalid lat/lon values and will be ignored", sum(incomplete))) # nolint
+    }
+    lng <- lng[!incomplete]
+    lat <- lat[!incomplete]
+  }
+
+  data.frame(lng = lng, lat = lat)
+
 }

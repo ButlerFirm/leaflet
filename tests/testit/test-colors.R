@@ -1,6 +1,6 @@
 library(testit)
 
-bw = c("black", "white")
+bw <- c("black", "white")
 
 # Do these cases make sense?
 assert(
@@ -37,7 +37,7 @@ assert(
     colorNumeric(colorRamp(bw), NULL)(c(0, 0.5, 1))
   ),
   identical(
-    c("#000000FF", "#777777FF", "#FFFFFFFF", "#FFFFFF00", "blue"),
+    c("#000000", "#777777", "#FFFFFF", "#FFFFFF00", "blue"),
     colorNumeric(c(bw, "#FFFFFF00"), NULL, na.color = "blue", alpha = TRUE)(c(0, 0.25, 0.5, 1, NA))
   )
 )
@@ -45,27 +45,27 @@ assert(
 assert(
   identical(
     c("#000000", "#FFFFFF"),
-    colorBin(bw, NULL)(c(1,2))
+    colorBin(bw, NULL)(c(1, 2))
   ),
 
   identical(
     c("#000000", "#FFFFFF"),
-    colorBin(bw, c(1,2))(c(1,2))
+    colorBin(bw, c(1, 2))(c(1, 2))
   ),
 
   identical(
     c("#000000", "#FFFFFF"),
-    colorBin(bw, c(1,2), 2)(c(1,2))
+    colorBin(bw, c(1, 2), 2)(c(1, 2))
   ),
 
   identical(
     c("#000000", "#FFFFFF"),
-    colorBin(bw, NULL, bins=c(1,1.5,2))(c(1,2))
+    colorBin(bw, NULL, bins = c(1, 1.5, 2))(c(1, 2))
   ),
 
   identical(
     c("#000000", "#FFFFFF"),
-    colorBin(bw, c(1,2), bins=c(1,1.5,2))(c(1,2))
+    colorBin(bw, c(1, 2), bins = c(1, 1.5, 2))(c(1, 2))
   ),
 
   TRUE

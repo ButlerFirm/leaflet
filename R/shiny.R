@@ -8,9 +8,8 @@
 #' @rdname map-shiny
 #' @export
 #' @examples # !formatR
-#' \donttest{library(leaflet)
 #' library(shiny)
-#' app = shinyApp(
+#' app <- shinyApp(
 #'   ui = fluidPage(leafletOutput('myMap')),
 #'   server = function(input, output) {
 #'     map = leaflet() %>% addTiles() %>% setView(-93.65, 42.0285, zoom = 17)
@@ -18,14 +17,17 @@
 #'   }
 #' )
 #'
-#' if (interactive()) print(app)}
-leafletOutput = function(outputId, width = "100%", height = 400) {
+#' \donttest{if (interactive()) app}
+leafletOutput <- function(outputId, width = "100%", height = 400) {
   htmlwidgets::shinyWidgetOutput(outputId, "leaflet", width, height, "leaflet")
 }
 
+# use expr description from htmlwidgets to avoid bad inherit params code
+#' @param expr An expression that generates an HTML widget (or a
+#'   \href{https://rstudio.github.io/promises/}{promise} of an HTML widget).
 #' @rdname map-shiny
 #' @export
-renderLeaflet = function(expr, env = parent.frame(), quoted = FALSE) {
-  if (!quoted) expr = substitute(expr)  # force quoted
+renderLeaflet <- function(expr, env = parent.frame(), quoted = FALSE) {
+  if (!quoted) expr <- substitute(expr)  # force quoted
   htmlwidgets::shinyRenderWidget(expr, leafletOutput, env, quoted = TRUE)
 }

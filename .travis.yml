@@ -1,31 +1,19 @@
-language: c
+language: r
+sudo: required
+cache: packages
+dist: trusty
 
-sudo: false
+before_install:
+  - sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable --yes
+  - sudo apt-get --yes --force-yes update -qq
+  - sudo apt-get install --yes libudunits2-dev libproj-dev libgeos-dev libgdal-dev
 
-env:
-  - R_PKG="$(basename $TRAVIS_REPO_SLUG)"
+notifications:
+  email:
+    on_success: change
+    on_failure: change
 
-addons:
-  apt:
-    sources:
-    - r-packages-precise
-    packages:
-    - r-base-dev
-    - r-recommended
-    - libgdal1-dev
-    - libproj-dev
-
-install:
-  - "wget -q -O - http://yihui.name/xran/r-config | bash"
-  - Rscript -e "if (!require('devtools')) install.packages('devtools')"
-  - Rscript -e "devtools::install_deps(dep = TRUE)"
-
-cache:
-  directories:
-  - $HOME/R
-
-script:
-  - cd ..; rm -f *.tar.gz; R CMD build $R_PKG
-  - R CMD check $R_PKG*.tar.gz --no-manual
-  - cd $R_PKG
-
+r_github_packages:
+  - jimhester/lintr
+after_success:
+  - Rscript -e 'lintr::lint_package()'
