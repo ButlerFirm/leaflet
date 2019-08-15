@@ -1756,7 +1756,7 @@ methods.addPolygons = function (polygons, layerId, group, options, popup, popupO
   }
 };
 
-methods.addGeoJSON = function (data, layerId, group, style) {
+methods.addGeoJSON = function (data, layerId, group, style, highlightOptions) {
   // This time, self is actually needed because the callbacks below need
   // to access both the inner and outer senses of "this"
   var self = this;
@@ -1786,7 +1786,17 @@ methods.addGeoJSON = function (data, layerId, group, style) {
       layer.on("mouseout", mouseHandler(self.id, layerId, group, "geojson_mouseout", extraInfo), this);
     }
   });
-  this.layerManager.addLayer(gjlayer, "geojson", layerId, group);
+    let df = new _dataframe2.default()
+      .col("layerId", layerId)
+      .col("group", group)
+      .col("popup", null)
+      .col("highlightOptions", highlightOptions)
+      .col("gjlayer", gjlayer);
+  //this.layerManager.addLayer(gjlayer, "geojson", layerId, group);
+  addLayers(this, "geojson", df, function(df, i) {
+    let gjlayer = df.get(i, "gjlayer");
+    return gjlayer;
+  });
 };
 
 methods.removeGeoJSON = function (layerId) {

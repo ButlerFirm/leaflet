@@ -1456,6 +1456,7 @@ function addMarkers(map, df, group, clusterOptions, clusterId, markerFunc) {
           marker.on("mouseover", mouseHandler(this.id, thisId, thisGroup, "marker_mouseover", extraInfo), this);
           marker.on("mouseout", mouseHandler(this.id, thisId, thisGroup, "marker_mouseout", extraInfo), this);
           marker.on("dragend", mouseHandler(this.id, thisId, thisGroup, "marker_dragend", extraInfo), this);
+          marker.on('drag', mouseHandler(this.id, thisId, thisGroup, 'marker_drag', extraInfo), this);
         }).call(_this3);
       }
     };
@@ -1529,6 +1530,108 @@ methods.addMarkers = function (lat, lng, icon, layerId, group, options, popup, p
       return _leaflet2.default.marker([df.get(i, "lat"), df.get(i, "lng")], options);
     });
   }
+};
+
+function addLabelMarkers(map, df, group, clusterOptions, clusterId, markerFunc) {
+  (function() {
+    var clusterGroup = this.layerManager.getLayer("cluster", clusterId),
+        cluster = clusterOptions !== null;
+    if (cluster && !clusterGroup) {
+      clusterGroup = L.markerClusterGroup(clusterOptions);
+      clusterGroup.clusterLayerStore = new ClusterLayerStore(clusterGroup);
+    }
+    var extraInfo = cluster ? { clusterId: clusterId } : {};
+
+    for (var i = 0; i < df.nrow(); i++) {
+      (function() {
+        var marker = markerFunc(df, i);
+        var thisId = df.get(i, 'layerId');
+        var thisGroup = cluster ? null : df.get(i, 'group');
+        if (cluster) {
+          clusterGroup.clusterLayerStore.add(marker, thisId);
+        } else {
+          this.layerManager.addLayer(marker, "marker", thisId, thisGroup);
+        }
+        var popup = df.get(i, 'popup');
+        if (popup !== null) marker.bindPopup(popup);
+        var label = df.get(i, 'label');
+        var labelclass = df.get(i, 'labelclass');
+        if (label !== null && labelclass !== null) marker.bindTooltip(label, { permanent: true,direction:'right', className:labelclass,textOnly:true });
+        if (label !== null && labelclass == null) marker.bindTooltip(label, { permanent: true,direction:'right', className:labelclass,textOnly:true });
+        marker.on('click', mouseHandler(this.id, thisId, thisGroup, 'labelmarker_click', extraInfo), this);
+        marker.on('mouseover', mouseHandler(this.id, thisId, thisGroup, 'labelmarker_mouseover', extraInfo), this);
+        marker.on('mouseout', mouseHandler(this.id, thisId, thisGroup, 'labelmarker_mouseout', extraInfo), this);
+        marker.on('drag', mouseHandler(this.id, thisId, thisGroup, 'labelmarker_drag', extraInfo), this);
+        marker.on('dragend', mouseHandler(this.id, thisId, thisGroup, 'labelmarker_dragend', extraInfo), this);
+      }).call(this);
+    }
+
+    if (cluster) {
+      this.layerManager.addLayer(clusterGroup, "cluster", clusterId, group);
+    }
+  }).call(map);
+}
+
+methods.addLabelMarkers = function(lat, lng, icon, layerId, group, options, popup,
+                              clusterOptions, clusterId,label,labelclass) {
+  if (icon) {
+    // Unpack icons
+    icon.iconUrl         = unpackStrings(icon.iconUrl);
+    icon.iconRetinaUrl   = unpackStrings(icon.iconRetinaUrl);
+    icon.shadowUrl       = unpackStrings(icon.shadowUrl);
+    icon.shadowRetinaUrl = unpackStrings(icon.shadowRetinaUrl);
+
+    // This cbinds the icon URLs and any other icon options; they're all
+    // present on the icon object.
+    var icondf = new _dataframe2.default().cbind(icon);
+
+    // Constructs an icon from a specified row of the icon dataframe.
+    var getIcon = function(i) {
+      var opts = icondf.get(i);
+      if (!opts.iconUrl) {
+        return new L.Icon.Default();
+      }
+
+      // Composite options (like points or sizes) are passed from R with each
+      // individual component as its own option. We need to combine them now
+      // into their composite form.
+      if (opts.iconWidth) {
+        opts.iconSize = [opts.iconWidth, opts.iconHeight];
+      }
+      if (opts.shadowWidth) {
+        opts.shadowSize = [opts.shadowWidth, opts.shadowHeight];
+      }
+      if (opts.iconAnchorX) {
+        opts.iconAnchor = [opts.iconAnchorX, opts.iconAnchorY];
+      }
+      if (opts.shadowAnchorX) {
+        opts.shadowAnchor = [opts.shadowAnchorX, opts.shadowAnchorY];
+      }
+      if (opts.popupAnchorX) {
+        opts.popupAnchor = [opts.popupAnchorX, opts.popupAnchorY];
+      }
+
+      return new L.Icon(opts);
+    };
+  }
+
+  var df = new _dataframe2.default()
+    .col('lat', lat)
+    .col('lng', lng)
+    .col('layerId', layerId)
+    .col('group', group)
+    .col('popup', popup)
+    .col('label', label)
+    .col('labelclass', labelclass)
+    .cbind(options);
+
+  if (icon) icondf.effectiveLength = df.nrow();
+
+  addLabelMarkers(this, df, group, clusterOptions, clusterId, function(df, i) {
+    var options = df.get(i);
+    if (icon) options.icon = getIcon(i);
+    return L.marker([df.get(i, 'lat'), df.get(i, 'lng')], options);
+  });
 };
 
 methods.addAwesomeMarkers = function (lat, lng, icon, layerId, group, options, popup, popupOptions, clusterOptions, clusterId, label, labelOptions, crosstalkOptions) {
@@ -1605,7 +1708,7 @@ function addLayers(map, category, df, layerFunc) {
           layer.on("mouseover", mouseHandler(_this4.id, thisId, thisGroup, category + "_mouseover"), _this4);
           layer.on("mouseout", mouseHandler(_this4.id, thisId, thisGroup, category + "_mouseout"), _this4);
           var highlightStyle = df.get(i, "highlightOptions");
-
+          console.log(highlightStyle)
           if (!_jquery2.default.isEmptyObject(highlightStyle)) {
             (function () {
 
@@ -1756,7 +1859,45 @@ methods.addPolygons = function (polygons, layerId, group, options, popup, popupO
   }
 };
 
-methods.addGeoJSON = function (data, layerId, group, style) {
+    function highlightFeature(hoverHighlightOptions) {
+      return function (e) {
+      	var layer = e.target;
+      	var color = hoverHighlightOptions.color;
+      	if ( color == null ) {
+          color = "black";
+        }
+        var weight = hoverHighlightOptions.weight;
+      	if ( weight == null ) {
+          weight = 3;
+        }
+  			layer.setStyle({
+  				weight: weight,
+          color: color
+  			});
+  			if (!L.Browser.ie && !L.Browser.opera) {
+  				layer.bringToFront();
+  			};
+      };
+		};
+    function resetHighlight(e) {
+      var layer = e.target;
+      var originalColor = e.target.feature.properties.style.color;
+      var originalWeight = e.target.feature.properties.style.weight;
+			layer.setStyle({
+				weight: originalWeight,
+        color: originalColor
+			});
+		};
+    methods.setStyleGeoJSON = function(layerId, featureId, style) {
+      var layerPicked = this.layerManager.getLayer("geojson", layerId)
+      layerPicked.eachLayer(function (layer) {
+        if(layer.feature.properties.admin == featureId) {
+         layer.setStyle(JSON.parse(style));
+        }
+      });
+    };
+
+methods.addGeoJSON = function (data, layerId, group, style, hoverHighlightOptions) {
   // This time, self is actually needed because the callbacks below need
   // to access both the inner and outer senses of "this"
   var self = this;
@@ -1784,9 +1925,28 @@ methods.addGeoJSON = function (data, layerId, group, style) {
       layer.on("click", mouseHandler(self.id, layerId, group, "geojson_click", extraInfo), this);
       layer.on("mouseover", mouseHandler(self.id, layerId, group, "geojson_mouseover", extraInfo), this);
       layer.on("mouseout", mouseHandler(self.id, layerId, group, "geojson_mouseout", extraInfo), this);
+      if (hoverHighlightOptions !== null){
+        layer.on("mouseover", highlightFeature(hoverHighlightOptions) , this);
+        layer.on("mouseout", resetHighlight, this);
+      }
     }
   });
+    //console.log(highlightOptions);
+     // let df = new _dataframe2.default()
+      //.col("layerId", layerId)
+      //.col("group", group)
+      //.col("popup", null)
+      //.col("popupOptions", null)
+      //.col("label", null)
+      //.col("labelOptions", null)
+      //.col("highlightOptions", highlightOptions)
+      //.col("gjlayer", gjlayer)
+      //.cbind(globalStyle);
   this.layerManager.addLayer(gjlayer, "geojson", layerId, group);
+  //addLayers(this, "geojson", df, function(df, i) {
+    //let gjlayer = df.get(i, "gjlayer");
+    //return gjlayer;
+  //});
 };
 
 methods.removeGeoJSON = function (layerId) {
